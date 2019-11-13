@@ -1,27 +1,29 @@
+// getting dom elements
 const divSelectRoom = document.getElementById('selectRoom');
 const divConsultingRoom = document.getElementById('consultingRoom');
 const inputRoomNumber = document.getElementById('roomNumber');
-const buttonGoRoom = document.getElementById('goRoom');
+const btnGoRoom = document.getElementById('goRoom');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 
+// variables
 let roomNumber;
 let localStream;
+let remoteStream;
 let rtcPeerConnection;
 const iceServers = {
   iceServers: [
-    {
-      urls: 'stun:stun.services.mozilla.com',
-    },
+    { urls: 'stun:stun.services.mozilla.com' },
     { urls: 'stun:stun.l.google.com:19302' },
   ],
 };
 const streamConstraints = { audio: true, video: true };
 let isCaller;
 
+// Let's do this
 const socket = io();
 
-buttonGoRoom.onclick = () => {
+btnGoRoom.onclick = function () {
   if (inputRoomNumber.value === '') {
     alert('Please type a room number');
   } else {
@@ -41,19 +43,21 @@ socket.on('created', () => {
       localVideo.srcObject = stream;
       isCaller = true;
     })
-    .catch((error) => {
-      console.log('An error ocurred when accessing media devices', error);
+    .catch((err) => {
+      console.log('An error ocurred when accessing media devices', err);
     });
 });
 
 socket.on('joined', () => {
   navigator.mediaDevices
     .getUserMedia(streamConstraints)
-    .then(() => {
+    .then((stream) => {
+      localStream = stream;
+      localVideo.srcObject = stream;
       socket.emit('ready', roomNumber);
     })
-    .catch((error) => {
-      console.log('An error ocurred when accessing media devices', error);
+    .catch((err) => {
+      console.log('An error ocurred when accessing media devices', err);
     });
 });
 
@@ -65,6 +69,7 @@ socket.on('candidate', (event) => {
   rtcPeerConnection.addIceCandidate(candidate);
 });
 
+// handler functions
 function onIceCandidate(event) {
   if (event.candidate) {
     console.log('sending ice candidate');
@@ -80,6 +85,7 @@ function onIceCandidate(event) {
 
 function onAddStream(event) {
   [remoteVideo.srcObject] = event.streams;
+  remoteStream = event.stream;
 }
 
 socket.on('ready', () => {
@@ -127,4 +133,8 @@ socket.on('offer', (event) => {
         console.log(error);
       });
   }
+});
+
+socket.on('answer', (event) => {
+  rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
 });
